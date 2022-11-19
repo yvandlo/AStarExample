@@ -5,16 +5,21 @@ using UnityEngine;
 
 public class Node : MonoBehaviour
 {
+    public GameObject toReach;
+
     private Dictionary<Vector3, Vector3> previousMap = new Dictionary<Vector3, Vector3>();
     // Priority Queue from https://github.com/FyiurAmron
     private PriorityQueue<(Vector3,float, Vector3), float> path = new PriorityQueue<(Vector3, float, Vector3), float>(); 
-    private Dictionary<Vector3, float> reached = new Dictionary<Vector3, float>();
-    private Rigidbody2D body;
-    private Vector3 origin;
+    private HashSet<Vector3> reached = new HashSet<Vector3>();
+
     private bool found = false;
     private List<Vector3> builtPath;
+
+    private Rigidbody2D body;
+    private Vector3 origin;
     private int traversalStep = 0;
-    public GameObject toReach;
+    private int steps;
+
     // Start is called before the first frame update
     void Start()
     {
@@ -63,24 +68,22 @@ public class Node : MonoBehaviour
     private Vector3 oneStep() {
         while(true) {
             if (path.Count == 0) {
-                return transform.position;
+                return origin;
             }
             (Vector3 current, float distanceTo, Vector3 previous) = path.Dequeue();
             transform.position = current;
-            if (!reached.ContainsKey(current)) {
-                reached.Add(current, distanceTo);
+            if (!reached.Contains(current)) {
+                reached.Add(current);
                 previousMap.Add(current, previous);
                 foreach ((Vector3 succ, float relDistance) in succesors(current)) {
-                    if (!reached.ContainsKey(succ)) {
+                    if (!reached.Contains(succ)) {
                         float totalDistance = distanceTo + relDistance;
                         path.Enqueue((succ, totalDistance, current), totalDistance + heurestic(succ));
                     }
                 }
-                break;
+                return current;
             }
-            return current;
         }
-        return transform.position;
     }
 
     private List<(Vector3, float)> succesors(Vector3 from) {
@@ -109,11 +112,10 @@ public class Node : MonoBehaviour
 
     private bool isDesired(Vector3 totest) {
         Vector2 as2d = convert(totest);
-        return hitGoal(castBox(as2d, new Vector2(0.0f, 0.0f)));
+        return hitGoal(castBox(as2d, Vector2.zero));
     }
 
     private RaycastHit2D castBox(Vector2 from, Vector2 direction) {
-        //credit to https://gist.github.com/SolidAlloy
         return Physics2D.BoxCast(from, new Vector2(1.0f, 1.0f), 0.0f, direction, direction.magnitude);
     }
 
